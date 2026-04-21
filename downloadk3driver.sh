@@ -92,7 +92,7 @@ else
 fi
 
 if [ "$success_k3screen" = "1" ] && [ "$success_firmware" = "1" ]; then
-    sed -i '/^\/root\/downloadk3driver.sh/d' /etc/rc.local;
+    sed -i '/downloadk3driver.sh/d' /etc/rc.local;
     echo "Removed, it will not run again on next boot!";
 else
     echo "Some tasks are incomplete, auto-start on boot is retained";
