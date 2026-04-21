@@ -1,31 +1,39 @@
 #!/bin/sh
 
-# ====================== config ======================
+# ====================== Configuration ======================
 K3SCREEN_IPK="/tmp/k3screenctrl.ipk";
 K3SCREEN_URL="https://raw.githubusercontent.com/wangzhongwen/phicomm_k3/refs/heads/main/k3screenctrl_0.10-2_arm_cortex-a9.ipk";
 
-# WiFi
+# WiFi firmware configuration
 TARGET="/lib/firmware/brcm/brcmfmac4366c-pcie.bin";
 MD5="32e0e8bba5fd958593743e37b095de05";
 TMP_FILE="/tmp/brcmfmac4366c-pcie.bin";
 FIRMWARE_URL="https://raw.githubusercontent.com/wangzhongwen/phicomm_k3/refs/heads/main/brcmfmac4366c-pcie.bin.32e0e8bba5fd958593743e37b095de05";
-# ===================================================
+# ===========================================================
 
-# success flag
+# Success status flags
 success_k3screen=0;
 success_firmware=0;
 
-# ====================== tast1 install k3screenctrl ======================
+# ====================== Task 1: Install k3screenctrl ======================
 if [ ! -f "/etc/init.d/k3screenctrl" ]; then
-    echo "download k3screenctrl...";
+    # Update opkg package repository
+    if opkg update >/dev/null 2>&1; then
+        echo "opkg update succeeded"
+    else
+        echo "opkg update failed"
+    fi
+    
+    echo "Downloading k3screenctrl...";
     wget -q --timeout=10 -O "$K3SCREEN_IPK" "$K3SCREEN_URL";
 
     if [ -f "$K3SCREEN_IPK" ]; then
-        opkg install "$K3SCREEN_IPK" >/dev/null 2>&1;
-        /etc/init.d/k3screenctrl enable >/dev/null 2>&1;
+        if opkg install "$K3SCREEN_IPK" >/dev/null 2>&1; then
+          # Enable k3screenctrl auto-start
+          /etc/init.d/k3screenctrl enable >/dev/null 2>&1;
 
-        # update port.sh
-        cat > /lib/k3screenctrl/port.sh <<'EOF'
+          # Update port status detection script
+          cat > /lib/k3screenctrl/port.sh <<'EOF'
 #!/bin/sh
 
 # https://github.com/lwz322/k3screenctrl/blob/master/lib/k3screenctrl/port.sh
@@ -55,45 +63,60 @@ print_eth_port_status lan1 # lan1@eth0 is LAN2 on label
 print_eth_port_status lan3 # lan3@eth0 is LAN3 on label
 print_eth_port_status wan # WAN
 print_usb_port_status
+
 EOF
-        chmod +x /lib/k3screenctrl/port.sh;
-        success_k3screen=1;
-        rm -f "$K3SCREEN_IPK";
-        echo "k3screenctrl install success";
+          # Make port script executable
+          chmod +x /lib/k3screenctrl/port.sh;
+          success_k3screen=1;
+          # Clean up downloaded package
+          rm -f "$K3SCREEN_IPK";
+          echo "k3screenctrl installed successfully";
+        else
+          echo "k3screenctrl installation failed";
+        fi
     else
-        echo "k3screenctrl install failed";
+        echo "k3screenctrl installation failed (package download failed)";
     fi
 else
     success_k3screen=1;
-    echo "k3screenctrl already exist";
+    echo "k3screenctrl already installed, skipping";
 fi
 
-# ====================== task2：update WiFi Driver ======================
+# ====================== Task 2: Update WiFi Driver ======================
+# Calculate current firmware MD5 checksum
 current_md5=$(md5sum "$TARGET" 2>/dev/null | awk '{print $1}');
+
+# Check if firmware needs update
 if [ "$current_md5" != "$MD5" ]; then
-    echo "download wifi driver...";
+    echo "Downloading WiFi driver...";
     if wget -q --timeout=10 -O "$TMP_FILE" "$FIRMWARE_URL"; then
+        # Verify downloaded firmware integrity
         dl_md5=$(md5sum "$TMP_FILE" | awk '{print $1}');
         if [ "$dl_md5" = "$MD5" ]; then
+            # Backup original firmware (only once)
             [ ! -f "${TARGET}.ori" ] && mv -f "$TARGET" "${TARGET}.ori";
+            # Replace with new firmware
             cp -f "$TMP_FILE" "$TARGET";
             success_firmware=1;
-            echo "update wifi success";
+            echo "WiFi driver updated successfully";
         else
-            echo "update wifi failed, md5 $dl_md5 incorrect";
+            echo "WiFi driver update failed: incorrect MD5 ($dl_md5)";
         fi
+        # Clean up temporary file
         rm -f "$TMP_FILE";
     else
-        echo "download wifi driver error";
+        echo "WiFi driver download failed";
     fi
 else
     success_firmware=1;
-    echo "wifi driver already exist";
+    echo "WiFi driver is already up to date, skipping";
 fi
 
+# ====================== Auto-start Cleanup ======================
+# Remove script from rc.local if all tasks succeeded
 if [ "$success_k3screen" = "1" ] && [ "$success_firmware" = "1" ]; then
     sed -i '/downloadk3driver.sh/d' /etc/rc.local;
-    echo "Removed, it will not run again on next boot!";
+    echo "Auto-start entry removed: script will not run on next boot!";
 else
-    echo "Some tasks are incomplete, auto-start on boot is retained";
+    echo "Some tasks incomplete: retaining auto-start on boot";
 fi
