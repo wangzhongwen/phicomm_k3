@@ -1,5 +1,13 @@
 #!/bin/sh
 
+#Run manually
+#sed -i '/^exit 0/i sh -c "$(wget -qO- https://raw.githubusercontent.com/wangzhongwen/phicomm_k3/refs/heads/main/downloadk3driver.sh)"' /etc/rc.local;
+#chmod u+x /etc/rc.local;
+
+#echo '5 * * * * /usr/bin/curl -fsL --connect-timeout 10 --max-time 30 https://raw.githubusercontent.com/wangzhongwen/phicomm_k3/refs/heads/main/downloadk3driver.sh | /bin/sh >> /var/log/downloadk3driver.log 2>&1' >> /etc/crontabs/root;
+#/etc/init.d/cron enable;
+#/etc/init.d/cron reload;
+
 # ====================== Configuration ======================
 K3SCREEN_IPK="/tmp/k3screenctrl.ipk";
 K3SCREEN_URL="https://raw.githubusercontent.com/wangzhongwen/phicomm_k3/refs/heads/main/k3screenctrl_0.10-2_arm_cortex-a9.ipk";
@@ -115,8 +123,10 @@ fi
 # ====================== Auto-start Cleanup ======================
 # Remove script from rc.local if all tasks succeeded
 if [ "$success_k3screen" = "1" ] && [ "$success_firmware" = "1" ]; then
-    sed -i '/downloadk3driver.sh/d' /etc/rc.local;
-    echo "Auto-start entry removed: script will not run on next boot!";
+    sed -i'' '/downloadk3driver.sh/d' /etc/rc.local;
+    sed -i'' '/downloadk3driver.sh/d' /etc/crontabs/root;
+    /etc/init.d/cron reload;
+    echo "Auto-start entry removed: script will not run on next!";
 else
-    echo "Some tasks incomplete: retaining auto-start on boot";
+    echo "Some tasks incomplete: retaining auto-start on next";
 fi
