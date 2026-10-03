@@ -10,7 +10,7 @@
 
 # ====================== Configuration ======================
 K3SCREEN_IPK="/tmp/k3screenctrl.ipk";
-K3SCREEN_URL="https://raw.githubusercontent.com/wangzhongwen/phicomm_k3/refs/heads/main/k3screenctrl_0.10-2_arm_cortex-a9.ipk";
+K3SCREEN_URL="https://raw.githubusercontent.com/wangzhongwen/phicomm_k3/refs/heads/main/k3screenctrl_24.10_arm_cortex-a9.ipk";
 
 # WiFi firmware configuration
 TARGET="/lib/firmware/brcm/brcmfmac4366c-pcie.bin";
